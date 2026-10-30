@@ -24,6 +24,10 @@ distro_install_xfce() {
   apt-get install -y xfce4
 }
 
+distro_install_cinnamon() {
+  apt-get install -y cinnamon
+}
+
 distro_zram() {
   backup /etc/default/zramswap
   cat > /etc/default/zramswap << EOF
