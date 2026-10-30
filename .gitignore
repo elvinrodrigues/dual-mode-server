@@ -1,0 +1,13 @@
+# Backups made by the scripts
+*.bak.*
+
+# Never commit secrets
+*.pem
+*.key
+id_*
+!id_*.pub.example
+.env
+*.env
+authorized_keys
+known_hosts
+tailscale*.key
