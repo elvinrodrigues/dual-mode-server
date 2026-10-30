@@ -32,14 +32,15 @@ Options:
                          (default: this PC's own subnet)
   --allow-any            open the management ports to any source
                          (not for shared or campus networks)
+  --open-web-ports       also allow ports 80, 443 and 3000:3999 through the firewall
   --rdp-desktop NAME     cinnamon (default) or xfce
   --no-governor          do not force the "performance" CPU governor
   --disable-unused       disable cups, bluetooth, ModemManager, avahi
   -h, --help             this text
 
-The environment variables ALLOWED_NETS, ALLOW_ANY, RDP_DESKTOP, PERF_GOVERNOR
-and DISABLE_UNUSED are still honoured. Every file that gets replaced is first
-copied to <file>.bak.<timestamp>. Safe to run more than once.
+The environment variables ALLOWED_NETS, ALLOW_ANY, OPEN_WEB_PORTS, RDP_DESKTOP,
+PERF_GOVERNOR and DISABLE_UNUSED are still honoured. Every file that gets replaced
+is first copied to <file>.bak.<timestamp>. Safe to run more than once.
 EOF
 }
 
@@ -67,6 +68,7 @@ supported_distros() {
 
 # Defaults (environment variables may pre-set them)
 ALLOW_ANY="${ALLOW_ANY:-0}"
+OPEN_WEB_PORTS="${OPEN_WEB_PORTS:-0}"
 RDP_DESKTOP="${RDP_DESKTOP:-cinnamon}"
 PERF_GOVERNOR="${PERF_GOVERNOR:-1}"
 DISABLE_UNUSED="${DISABLE_UNUSED:-0}"
@@ -85,6 +87,7 @@ while [ $# -gt 0 ]; do
     --skip)           SKIP="${2:?--skip needs a comma-separated list}"; shift ;;
     --allowed-nets)   ALLOWED_NETS="${2:?--allowed-nets needs a value}"; shift ;;
     --allow-any)      ALLOW_ANY=1 ;;
+    --open-web-ports) OPEN_WEB_PORTS=1 ;;
     --rdp-desktop)    RDP_DESKTOP="${2:?--rdp-desktop needs a name}"; shift ;;
     --no-governor)    PERF_GOVERNOR=0 ;;
     --disable-unused) DISABLE_UNUSED=1 ;;

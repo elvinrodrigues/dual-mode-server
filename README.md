@@ -43,6 +43,7 @@ sudo bash optimize.sh [DISTRO] [MODULES] [OPTIONS]
 | `--list` | Show modules and supported distros. |
 | `--allowed-nets "A B"` | Networks allowed through the firewall (default: this PC's subnet). |
 | `--allow-any` | Open management ports to any source. Not for shared networks. |
+| `--open-web-ports` | Also allow ports 80, 443 and 3000:3999 through the firewall. |
 | `--rdp-desktop NAME` | `cinnamon` (default) or `xfce` (lighter). |
 | `--no-governor` | Skip the always-`performance` CPU governor. |
 | `--disable-unused` | Disable cups, bluetooth, ModemManager and avahi. |
@@ -69,7 +70,7 @@ sudo bash optimize.sh --list
 | `disk` | `noatime`, `bfq`, journal cap, SMART, auto-updates, CPU governor, no sleep. |
 | `grub` | Extra "Headless Server Mode" boot entry. |
 | `gui-toggle` | `gui-stop` / `gui-start` commands. |
-| `firewall` | UFW: management ports only from trusted networks. |
+| `firewall` | UFW: management ports only from trusted networks (web/dev ports opt-in). |
 
 Every file that gets replaced is first copied to `<file>.bak.<timestamp>` (skipped if it already matches the latest backup). The script is safe to run more than once.
 

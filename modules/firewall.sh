@@ -28,9 +28,11 @@ mod_firewall() {
     ufw allow from "$src" to any port 22        proto tcp comment "SSH"
     ufw allow from "$src" to any port 3389      proto tcp comment "XRDP"
     ufw allow from "$src" to any port 9090      proto tcp comment "Cockpit"
-    ufw allow from "$src" to any port 80        proto tcp comment "HTTP"
-    ufw allow from "$src" to any port 443       proto tcp comment "HTTPS"
-    ufw allow from "$src" to any port 3000:3999 proto tcp comment "App dev ports"
+    if [ "$OPEN_WEB_PORTS" = "1" ]; then
+      ufw allow from "$src" to any port 80        proto tcp comment "HTTP"
+      ufw allow from "$src" to any port 443       proto tcp comment "HTTPS"
+      ufw allow from "$src" to any port 3000:3999 proto tcp comment "App dev ports"
+    fi
   done
   ufw --force enable
   return 0
