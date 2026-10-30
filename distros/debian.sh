@@ -72,8 +72,32 @@ EOF
   # Remove the entry an earlier version put into 40_custom, if it is still there.
   if grep -q 'Headless Server Mode' /etc/grub.d/40_custom 2>/dev/null; then
     backup /etc/grub.d/40_custom
-    printf '#!/bin/sh\nexec tail -n +3 $0\n# This file provides an easy way to add custom menu entries.\n' > /etc/grub.d/40_custom
-    chmod +x /etc/grub.d/40_custom
+    python3 - /etc/grub.d/40_custom << 'PY'
+import sys, re
+path = sys.argv[1]
+with open(path, "r") as f:
+    lines = f.readlines()
+out = []
+in_block = False
+depth = 0
+found = False
+for line in lines:
+    if not in_block:
+        if re.match(r"^\s*menuentry\s+['\"].*Headless Server Mode", line):
+            in_block = True
+            found = True
+            depth = line.count("{") - line.count("}")
+            continue
+        out.append(line)
+    else:
+        depth += line.count("{") - line.count("}")
+        if depth <= 0:
+            in_block = False
+            continue
+if found:
+    with open(path, "w") as f:
+        f.writelines(out)
+PY
   fi
 
   if grep -q '^GRUB_TIMEOUT=' /etc/default/grub; then
