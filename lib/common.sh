@@ -24,7 +24,13 @@ backup() {
 
 # Fills in everything the modules need to know about this machine.
 detect_system() {
-  CURRENT_USER="${SUDO_USER:-student}"
+  CURRENT_USER="${SUDO_USER:-}"
+  if [ -z "$CURRENT_USER" ]; then
+    CURRENT_USER="$(logname 2>/dev/null || true)"
+  fi
+  if [ -z "$CURRENT_USER" ] || [ "$CURRENT_USER" = "root" ] || ! getent passwd "$CURRENT_USER" >/dev/null 2>&1; then
+    die "Run with sudo from your normal user account (could not determine the target user)."
+  fi
   USER_HOME="$(getent passwd "$CURRENT_USER" | cut -d: -f6)"
   ROOT_UUID="$(findmnt -no UUID / || true)"
 
