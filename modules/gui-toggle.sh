@@ -11,7 +11,7 @@ read -rp "This closes the local desktop (unsaved work is lost). Continue? [y/N] 
 sudo systemctl isolate multi-user.target
 if [[ "${1:-}" == "--all" ]]; then
     sudo systemctl stop xrdp xrdp-sesman
-    echo "[+] Remote desktop sessions ended."
+    echo "[+] xrdp stopped; run gui-start to enable remote desktop again."
 fi
 echo "[+] Desktop stopped. Memory now:"
 free -h
