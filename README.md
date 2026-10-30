@@ -71,7 +71,7 @@ sudo bash optimize.sh --list
 | `gui-toggle` | `gui-stop` / `gui-start` commands. |
 | `firewall` | UFW: management ports only from trusted networks. |
 
-Every file that gets replaced is first copied to `<file>.bak.<timestamp>`. The script is safe to run more than once.
+Every file that gets replaced is first copied to `<file>.bak.<timestamp>` (skipped if it already matches the latest backup). The script is safe to run more than once.
 
 ## Why these choices
 

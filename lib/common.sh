@@ -10,6 +10,13 @@ die()  { echo "[-] $*" >&2; exit 1; }
 # Copy an existing file aside before we replace it.
 backup() {
   if [ -e "$1" ]; then
+    local newest="" cand
+    for cand in "$1".bak.*; do
+      [ -e "$cand" ] && newest="$cand"
+    done
+    if [ -n "$newest" ] && cmp -s "$1" "$newest"; then
+      return 0
+    fi
     cp -a "$1" "$1.bak.$STAMP"
   fi
   return 0
