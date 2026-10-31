@@ -72,28 +72,40 @@ grub_show_menu() {
 distro_grub_headless() {
   grub_show_menu
 
-  if [ -z "$ROOT_UUID" ] || [ ! -e /vmlinuz ] || [ ! -e /initrd.img ] || mountpoint -q /boot; then
-    warn "Unusual boot layout (separate /boot or missing /vmlinuz): skipping the Headless GRUB entry."
+  if ! ls /boot/vmlinuz-* >/dev/null 2>&1 || ! command -v grub-probe >/dev/null 2>&1; then
+    warn "No /boot/vmlinuz-* kernel or no grub-probe found: skipping the Headless GRUB entry."
     warn "Alternative:  sudo systemctl set-default multi-user.target   (boot headless always)"
     update-grub
     return 0
   fi
 
-  # Own file, so an existing /etc/grub.d/40_custom is left untouched.
-  cat > /etc/grub.d/41_headless << EOF
+  # Own file, so an existing /etc/grub.d/40_custom is left untouched. It is a
+  # generator: every update-grub picks the newest kernel in /boot, so the entry
+  # keeps working after kernel updates (no dependence on /vmlinuz symlinks).
+  cat > /etc/grub.d/41_headless << 'GEN'
 #!/bin/sh
-exec tail -n +3 \$0
-menuentry 'Debian GNU/Linux (Headless Server Mode - No GUI)' --class debian --class gnu-linux --class gnu --class os {
+kernel=""
+for k in $(ls -v /boot/vmlinuz-* 2>/dev/null); do kernel=$k; done
+[ -n "$kernel" ] || exit 0
+version=${kernel#/boot/vmlinuz-}
+[ -e "/boot/initrd.img-$version" ] || exit 0
+root_uuid=$(grub-probe --target=fs_uuid / 2>/dev/null) || exit 0
+boot_uuid=$(grub-probe --target=fs_uuid /boot 2>/dev/null) || exit 0
+prefix=""
+[ "$boot_uuid" = "$root_uuid" ] && prefix="/boot"
+cat << EOF
+menuentry 'Headless Server Mode - No GUI ($version)' --class gnu-linux --class gnu --class os {
     load_video
     insmod gzio
     insmod part_msdos
     insmod part_gpt
     insmod ext2
-    search --no-floppy --fs-uuid --set=root $ROOT_UUID
-    linux   /vmlinuz root=UUID=$ROOT_UUID ro quiet systemd.unit=multi-user.target
-    initrd  /initrd.img
+    search --no-floppy --fs-uuid --set=root $boot_uuid
+    linux   $prefix/vmlinuz-$version root=UUID=$root_uuid ro quiet systemd.unit=multi-user.target
+    initrd  $prefix/initrd.img-$version
 }
 EOF
+GEN
   chmod +x /etc/grub.d/41_headless
 
   # Remove the entry an earlier version put into 40_custom, if it is still there.
