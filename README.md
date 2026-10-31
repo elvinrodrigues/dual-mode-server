@@ -72,6 +72,22 @@ sudo bash optimize.sh --list
 | `gui-toggle` | `gui-stop` / `gui-start` commands. |
 | `firewall` | UFW: management ports only from trusted networks (web/dev ports opt-in). |
 
+**Optional module** (not part of `--all`; run it by name):
+
+| Module | What it does |
+| :--- | :--- |
+| `campus-login` | Keeps a captive-portal network (college or hostel wifi) logged in. Installs a timer that checks every 2 minutes and logs in only when the network is offline. |
+
+```bash
+sudo bash optimize.sh --debian --only campus-login
+sudo campus-login edit      # enter the portal address and your accounts
+sudo campus-login           # log in now
+sudo campus-login status    # recent attempts
+```
+
+The portal address and accounts live in `/etc/campus-login.conf` (root-only, mode 600) and are never part of the repo. The script assumes a portal that accepts `POST <portal>/login.xml` (Cyberoam/Sophos style, usually port 8090) and decides success by checking internet access afterwards. Other portal types need a different login request. Keep accounts only on machines you control, and remove them from shared PCs when you are done:
+`sudo rm /etc/campus-login.conf && sudo systemctl disable --now campus-login.timer`.
+
 Every file that gets replaced is first copied to `<file>.bak.<timestamp>` (skipped if it already matches the latest backup). The script is safe to run more than once.
 
 ## Why these choices
@@ -95,7 +111,7 @@ More detail is in [`docs/ANALYSIS.md`](docs/ANALYSIS.md).
 ```
 optimize.sh        entry point
 lib/common.sh      helpers and machine detection
-modules/           one file per module
+modules/           one file per module (campus-login is optional)
 distros/debian.sh  package names, ZRAM, boot loader for Debian
 tools/             check-server.sh (read-only health check)
 docs/              analysis and notes

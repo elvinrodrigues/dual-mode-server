@@ -12,6 +12,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULES=(packages ssh xrdp cockpit docker memory disk grub gui-toggle firewall)
+OPTIONAL_MODULES=(campus-login)   # only run when named with --only
+ALL_MODULES=("${MODULES[@]}" "${OPTIONAL_MODULES[@]}")
 
 usage() {
   cat << 'EOF'
@@ -22,8 +24,8 @@ Distro (default: detected from /etc/os-release):
   --distro NAME          use distros/NAME.sh
 
 Modules (one of --all / --only is required):
-  --all                  run every module, in order
-  --only a,b,c           run only these modules
+  --all                  run every standard module, in order
+  --only a,b,c           run only these modules (the only way to run optional ones)
   --skip a,b             leave these modules out
   --list                 show modules and supported distros
 
@@ -56,6 +58,7 @@ describe_module() {
     grub)       echo "extra 'Headless Server Mode' boot menu entry" ;;
     gui-toggle) echo "gui-stop / gui-start commands" ;;
     firewall)   echo "UFW: management ports only from trusted networks" ;;
+    campus-login) echo "captive-portal auto-login timer (optional)" ;;
   esac
 }
 
@@ -94,7 +97,12 @@ while [ $# -gt 0 ]; do
     --list)
       echo "Modules (run in this order):"
       for m in "${MODULES[@]}"; do
-        printf '  %-11s %s\n' "$m" "$(describe_module "$m")"
+        printf '  %-13s %s\n' "$m" "$(describe_module "$m")"
+      done
+      echo
+      echo "Optional modules (only with --only):"
+      for m in "${OPTIONAL_MODULES[@]}"; do
+        printf '  %-13s %s\n' "$m" "$(describe_module "$m")"
       done
       echo
       echo "Supported distros: $(supported_distros)"
@@ -158,7 +166,7 @@ validate_modules() {  # validate_modules <comma-list>
   local m
   for m in ${1//,/ }; do
     local found=0 k
-    for k in "${MODULES[@]}"; do
+    for k in "${ALL_MODULES[@]}"; do
       if [ "$k" = "$m" ]; then found=1; fi
     done
     [ "$found" = 1 ] || die "Unknown module '$m'. Run --list to see the modules."
@@ -169,7 +177,8 @@ validate_modules() {  # validate_modules <comma-list>
 [ -z "$SKIP" ] || validate_modules "$SKIP"
 
 RUN=()
-for m in "${MODULES[@]}"; do
+for m in "${ALL_MODULES[@]}"; do
+  if [ "$SELECT" = "all" ] && ! in_list "$m" "$(IFS=,; echo "${MODULES[*]}")"; then continue; fi
   if [ "$SELECT" != "all" ] && ! in_list "$m" "$SELECT"; then continue; fi
   if [ -n "$SKIP" ] && in_list "$m" "$SKIP"; then continue; fi
   RUN+=("$m")
