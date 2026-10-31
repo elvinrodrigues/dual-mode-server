@@ -62,7 +62,7 @@ echo "== SSH =="
 if sshd -T 2>/dev/null | grep -q '^passwordauthentication no'; then
   ok "SSH password login disabled (keys only)"
 else
-  info "SSH password login still enabled (add a key with ssh-copy-id, then re-run optimize-server.sh)"
+  info "SSH password login still enabled (add a key with ssh-copy-id, then re-run optimize.sh --debian --only ssh)"
 fi
 
 echo

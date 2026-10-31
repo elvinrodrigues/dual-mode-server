@@ -1,5 +1,18 @@
 # Analysis of the Server Setup Kit
 
+> [!NOTE]
+> **Historical Document:** This analysis is a historical review of the initial prototype (`optimize-server.sh`). The findings below are fixed or mitigated in the current modular scripts, as noted:
+> - **Finding 1 (Docker skips UFW):** Fixed in `modules/docker.sh` by binding published ports to `127.0.0.1` by default and capping container log sizes.
+> - **Finding 2 (`vm.swappiness = 15`):** Fixed in `lib/common.sh` and `modules/memory.sh` by setting swappiness dynamically (150 for <=6 GB RAM, 100 otherwise) and `vm.page-cluster = 0`.
+> - **Finding 3 (No OOM daemon):** Fixed in `distros/debian.sh` and `modules/memory.sh` by installing and enabling `earlyoom`.
+> - **Finding 5 (`gui-stop` does not end XRDP sessions):** Not fixed. `gui-stop --all` stops the `xrdp` service, and the message in `modules/gui-toggle.sh` now says so; it does not end individual sessions.
+> - **Finding 7 (Remote access hardening):** Partly fixed. `modules/firewall.sh` limits access to trusted subnets, and `modules/ssh.sh` adds `fail2ban` and no root login. Password login stays on until a key is installed, and XRDP and Cockpit still accept passwords from the trusted subnet.
+> - **Finding 8 (sysctl tuning):** Fixed in `modules/memory.sh` by removing redundant `fs.file-max` and enabling BBR.
+> - **Finding 9 (GRUB custom entry / `40_custom` overwrite):** Fixed in `lib/common.sh` (dynamic UUID detection) and `distros/debian.sh` (dedicated `/etc/grub.d/41_headless` and non-destructive removal of old entries from `40_custom`).
+> - **Finding 10 (Disk tuning):** Fixed in `modules/disk.sh` (BFQ I/O scheduler udev rule, journal size cap, and SMART monitoring).
+> - **Finding 11 (Cinnamon heavy over XRDP):** Mitigated only. `--rdp-desktop xfce` is available, but Cinnamon is still the default.
+> - **Finding 12 (Missing backups / idempotency):** Mostly fixed. `backup()` in `lib/common.sh` creates timestamped copies and skips a file that matches its latest backup, so a repeat run adds at most one extra backup.
+
 Review of `optimize-server.sh`, `PLAN.md`, `CONTEXT.md` and `README.md` for the Debian 13 dual-mode server (i3-2130, 4 GB RAM, 5900 RPM HDD).
 
 **Short verdict:** The overall design works: one shared system, reachable over SSH, XRDP and Cockpit, with a headless boot option and a way to toggle the GUI. But some settings work against each other, some claims in the docs are wrong, and there is one serious security gap (Docker skips UFW). Fix the items marked 🔴 before you rely on this machine.
