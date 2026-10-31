@@ -44,11 +44,38 @@ distro_auto_updates() {
   return 0
 }
 
+# Show the menu for 5 seconds. Ubuntu/Mint hide it by default
+# (GRUB_TIMEOUT_STYLE=hidden), which makes any extra entry hard to reach.
+grub_show_menu() {
+  backup /etc/default/grub
+  if grep -q '^GRUB_TIMEOUT=' /etc/default/grub; then
+    sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/' /etc/default/grub
+  else
+    echo 'GRUB_TIMEOUT=5' >> /etc/default/grub
+  fi
+  if grep -q '^GRUB_TIMEOUT_STYLE=' /etc/default/grub; then
+    sed -i 's/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' /etc/default/grub
+  else
+    echo 'GRUB_TIMEOUT_STYLE=menu' >> /etc/default/grub
+  fi
+  # Mint/Ubuntu also read drop-in files that can set the same variables.
+  local f
+  for f in /etc/default/grub.d/*.cfg; do
+    [ -e "$f" ] || continue
+    if grep -qE '^GRUB_TIMEOUT(_STYLE)?=' "$f"; then
+      warn "$f also sets GRUB_TIMEOUT*; it may override the menu setting."
+    fi
+  done
+}
+
 # Adds a "Headless Server Mode" entry to the GRUB menu.
 distro_grub_headless() {
+  grub_show_menu
+
   if [ -z "$ROOT_UUID" ] || [ ! -e /vmlinuz ] || [ ! -e /initrd.img ] || mountpoint -q /boot; then
-    warn "Unusual boot layout (separate /boot or missing /vmlinuz): skipping GRUB entry."
+    warn "Unusual boot layout (separate /boot or missing /vmlinuz): skipping the Headless GRUB entry."
     warn "Alternative:  sudo systemctl set-default multi-user.target   (boot headless always)"
+    update-grub
     return 0
   fi
 
@@ -100,19 +127,6 @@ if found:
 PY
   fi
 
-  # Show the menu for 5 seconds. Ubuntu/Mint hide it by default
-  # (GRUB_TIMEOUT_STYLE=hidden), which makes the headless entry hard to reach.
-  backup /etc/default/grub
-  if grep -q '^GRUB_TIMEOUT=' /etc/default/grub; then
-    sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/' /etc/default/grub
-  else
-    echo 'GRUB_TIMEOUT=5' >> /etc/default/grub
-  fi
-  if grep -q '^GRUB_TIMEOUT_STYLE=' /etc/default/grub; then
-    sed -i 's/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' /etc/default/grub
-  else
-    echo 'GRUB_TIMEOUT_STYLE=menu' >> /etc/default/grub
-  fi
   update-grub
   return 0
 }
