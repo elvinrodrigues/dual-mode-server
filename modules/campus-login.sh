@@ -49,14 +49,20 @@ for acct in "${ACCOUNTS[@]}"; do
   p="${acct#*:}"
   [ "$u" = "username" ] && continue
   # Credentials go through stdin, so they never show up in 'ps'.
-  printf 'url = "%s/login.xml"\ndata = "mode=191&producttype=0&a=%s000"\ndata-urlencode = "username=%s"\ndata-urlencode = "password=%s"\nmax-time = 10\n' \
-    "$(esc "$PORTAL")" "$(date +%s)" "$(esc "$u")" "$(esc "$p")" | curl -s -o /dev/null -K -
+  resp="$(printf 'url = "%s/login.xml"\ndata = "mode=191&producttype=0&a=%s000"\ndata-urlencode = "username=%s"\ndata-urlencode = "password=%s"\nmax-time = 10\n' \
+    "$(esc "$PORTAL")" "$(date +%s)" "$(esc "$u")" "$(esc "$p")" | curl -s -K - | tr '\n' ' ')"
   sleep 2
-  if online; then
+  # The portal says LIVE when the login worked, even if the internet check is
+  # blocked by the campus network.
+  if [[ "$resp" == *"[CDATA[LIVE]]"* ]] || online; then
     say "Logged in as $u"
     exit 0
   fi
-  say "Login failed for $u"
+  msg="$(printf '%s' "$resp" | sed -n 's/.*<message><!\[CDATA\[\(.*\)\]\]><\/message>.*/\1/p' | cut -c1-120)"
+  if [ -z "$resp" ]; then
+    msg="no reply from portal (wrong address or port?)"
+  fi
+  say "Login failed for $u: ${msg:-unrecognised portal reply}"
 done
 say "All accounts failed"
 exit 1
