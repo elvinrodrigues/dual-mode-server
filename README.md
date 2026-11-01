@@ -1,14 +1,26 @@
 # dual-mode-server
 
-One script to turn a small Linux PC into a **dual-mode server**: boot headless or with a desktop, reach it over SSH, remote desktop (XRDP) and a web panel (Cockpit), all on the same shared system (same files, same Docker daemon, same ports).
+Scripts to turn a small Linux PC into a **dual-mode server**: boot headless or with a desktop, reach it over SSH, remote desktop (XRDP) and a web panel (Cockpit), all on the same shared system (same files, same Docker daemon, same ports). `setup.sh` does a whole fresh PC in one command: server tuning, college wifi login, developer tools and joining the club's Headscale network.
 
 Tuned for small-memory machines (tested on 4 GB RAM with a 5900 RPM HDD) and sized automatically for larger ones.
 
-> **Status:** tested on **Debian 13 (Trixie)** only, on one machine. Other distros are not supported yet. The scripts change SSH, firewall, boot and kernel settings: **read them first and try them in a VM**.
+> **Status:** `optimize.sh` is tested on **Debian 13 (Trixie)** only, on one machine. `setup.sh` and the new `tools/` install scripts have only been checked with `--dry-run` (and a Tailscale join done by hand). Other distros are not supported yet. The scripts change SSH, firewall, boot and kernel settings: **read them first and try them in a VM**.
 
-## Fresh Debian install (new PC)
+## Set up a fresh PC, start to finish
 
-A fresh Debian has no `sudo` for your user and no `git`. Open this page in Firefox on the new PC and paste these, replacing `YOURUSERNAME` with the account you created during the install:
+### 0. Before you start
+
+- Debian is installed and the internet works. If the college wifi has a login page, log in to it in Firefox first.
+- You have a **Headscale pre-auth key** for the club network. Create one in the Headscale container (Dokploy terminal) and copy it; do not share it:
+  ```bash
+  headscale preauthkeys create --user 1 --reusable --expiration 1h
+  ```
+- You have a name for this PC (for example `flcpc1`); every PC needs a different one.
+- Optional: your SSH public key. Password login is only switched off once a key is installed (see [SSH keys](#ssh-keys)).
+
+### 1. Install `sudo` and `git`
+
+A fresh Debian has no `sudo` for your user and no `git`. Open this page in Firefox on the new PC and paste these one at a time. Replace `YOURUSERNAME` with the account you created during the install:
 
 ```bash
 su -
@@ -26,31 +38,106 @@ usermod -aG sudo YOURUSERNAME
 exit
 ```
 
-Log out and back in (the group only applies to a new login), then check that `sudo` works and clone the repo:
+Log out and back in (the group only applies to a new login), then check that `sudo` works:
 
 ```bash
 sudo -v
+```
+
+If you left the root password empty during the install, the installer already set up `sudo`. Skip the `su -` part and run only `sudo apt update && sudo apt install -y git`.
+
+### 2. Clone the repo
+
+```bash
 git clone https://github.com/elvinrodrigues/dual-mode-server.git
 cd dual-mode-server
 ```
 
-If you left the root password empty during the install, the installer already set up `sudo` for you; run just `sudo apt update && sudo apt install -y git`.
+### 3. Run the setup
 
-Then run everything in order with one command (see [Whole setup in one go](#whole-setup-in-one-go)), or run each script yourself.
-
-## Quick start
-
-Run it at the machine itself the first time, not over SSH.
+First look at what it will do. This changes nothing:
 
 ```bash
-git clone https://github.com/elvinrodrigues/dual-mode-server.git
-cd dual-mode-server
+sudo bash setup.sh --all --hostname flcpc1 --dry-run
+```
+
+Then run it for real:
+
+```bash
+sudo bash setup.sh --all --hostname flcpc1
+```
+
+Run it at the machine itself the first time, not over SSH. It takes a while and asks you for two things:
+
+1. **College wifi accounts**: an editor opens on `/etc/campus-login.conf`. Fill in the portal address and accounts, save and exit. Use `--skip internet` if this network has no login page.
+2. **Headscale pre-auth key**: a hidden prompt at the end. Paste the key and press Enter (nothing is shown as you type).
+
+### 4. Reboot and check
+
+```bash
+sudo reboot
+```
+
+```bash
+sudo bash tools/check-server.sh
+tailscale status
+```
+
+`tailscale status` should list this PC and the other club PCs. In the Headscale container, `headscale nodes list` should show it too. Then expire the pre-auth key you used (`headscale preauthkeys --help` lists the command).
+
+## What `setup.sh` does
+
+`setup.sh` runs the repo's scripts in order. Each step also works on its own.
+
+| Step | What it runs |
+| :--- | :--- |
+| `optimize` | `optimize.sh --all`: SSH hardening, firewall, memory, disk, boot menu (see [Modules](#modules)). |
+| `internet` | The `campus-login` module (captive-portal auto-login), then opens the accounts file for you to fill in. |
+| `tools` | `tools/install-devtools.sh`: docker, node, pnpm, bun, curl, wget, zip, unzip, 7zip. Then `optimize.sh --only docker`, to harden the Docker that was just installed. |
+| `headscale` | `tools/install-tailscale.sh` (Tailscale from its apt repository), then `tools/join-headscale.sh` (joins the club's Headscale network). |
+
+| Option | Meaning |
+| :--- | :--- |
+| `--all` | Run every step. |
+| `--only a,b` | Run only these steps, for example `--only tools,headscale`. |
+| `--skip a,b` | Leave these steps out, for example `--skip internet`. |
+| `--hostname NAME` | Name this PC gets on the Headscale network (default: its hostname). |
+| `--key-file FILE` | Read the pre-auth key from a file instead of asking. |
+| `--optimize-args "..."` | Extra options for `optimize.sh`, for example `"--allowed-nets 10.0.0.0/24"`. |
+| `--dry-run` | Show the commands and change nothing. |
+
+Running it again is safe. If a step fails, the script stops and prints how to continue.
+
+### If something goes wrong
+
+- **A step failed.** Fix the problem, then run the remaining steps, for example `sudo bash setup.sh --only tools,headscale --hostname flcpc1`.
+- **The network blocks Tailscale's apt repository.** On a network that allows it, download the `.deb` from `pkgs.tailscale.com` onto a USB stick, then run `sudo bash tools/install-tailscale.sh --deb /path/to/file.deb` and re-run the `headscale` step. Tailscale is skipped when it is already installed.
+- **`join-headscale.sh` says it cannot reach the Headscale server.** The network is blocking it. Open the server address in Firefox to see whether it loads.
+- **You were locked out of SSH.** `fail2ban` bans an address for one hour after 5 wrong passwords. On the PC itself: `sudo fail2ban-client set sshd unbanip <address>`.
+- **The PC was already logged in to another Tailscale network.** Run `sudo bash tools/join-headscale.sh --hostname flcpc1 --force` directly, which re-registers it.
+
+### The scripts on their own
+
+| Script | What it does | Options |
+| :--- | :--- | :--- |
+| `tools/install-devtools.sh` | Installs curl, wget, zip, unzip, 7zip, Docker (with compose), Node and npm from Debian's apt mirrors, then pnpm and bun with `npm install -g`. Node is Debian's own version, so it may be older than the latest release. | `--only a,b`, `--skip a,b` (items: `base`, `docker`, `node`, `pnpm`, `bun`) |
+| `tools/install-tailscale.sh` | Installs the Tailscale client from its apt repository. Does nothing if it is already installed. | `--deb FILE` |
+| `tools/join-headscale.sh` | Joins this PC to the Headscale network, checks the server is reachable first, adds a firewall rule for `tailscale0`. The key is read from `--key-file`, `$HEADSCALE_AUTHKEY`, or a hidden prompt, and is never written to the repo. | `--hostname`, `--key-file`, `--server`, `--force` |
+
+After `tools/install-devtools.sh`, log out and back in so that your user can run `docker` without `sudo`.
+
+## Only the optimize step
+
+If you just want the server tuning and nothing else:
+
+```bash
 sudo bash optimize.sh --debian --all
 sudo reboot
 sudo bash tools/check-server.sh
 ```
 
-### Before you run it: SSH keys
+### SSH keys
+
 Password login is only switched off if a key is already installed. From your laptop:
 
 ```bash
@@ -59,28 +146,6 @@ ssh-copy-id user@<server-ip>
 ```
 
 Then run (or re-run) the script. The key stays protected by its passphrase, so don't create it on a shared PC without one.
-
-## Whole setup in one go
-
-`setup.sh` runs the repo's scripts in order on a fresh PC:
-
-| Step | What it runs |
-| :--- | :--- |
-| `optimize` | `optimize.sh --all` (SSH, firewall, memory, disk, boot menu, ...) |
-| `internet` | the `campus-login` module; it opens the accounts file for you to fill in |
-| `tools` | `tools/install-devtools.sh` (docker, node, pnpm, bun, curl, wget, zip, unzip, 7zip), then `optimize.sh --only docker` to harden the new Docker |
-| `headscale` | `tools/install-tailscale.sh`, then `tools/join-headscale.sh` (asks for the pre-auth key) |
-
-```bash
-sudo bash setup.sh --all --hostname flcpc1
-sudo bash setup.sh --all --skip internet --hostname flcpc1
-sudo bash setup.sh --only tools,headscale --hostname flcpc1
-sudo bash setup.sh --all --dry-run     # show the commands, change nothing
-```
-
-`--all` runs every step; `--only a,b` and `--skip a,b` pick steps; `--key-file FILE` and `--optimize-args "..."` are passed on. If a step fails, the script stops and tells you how to continue. Reboot at the end.
-
-Each piece also runs on its own: `tools/install-devtools.sh [--only a,b | --skip a,b]`, `tools/install-tailscale.sh [--deb FILE]`, `tools/join-headscale.sh`. The dev tools come from Debian's apt mirrors and the npm registry (node is Debian's own version, so it may be older than the latest release).
 
 ## Usage
 
@@ -146,7 +211,7 @@ Every file that gets replaced is first copied to `<file>.bak.<timestamp>` (skipp
 
 ## Several PCs over Headscale
 
-Join each PC to your Headscale network with `sudo bash tools/join-headscale.sh --hostname <name>`. Then give each one an alias in `~/.ssh/config` **on your laptop** (this file is personal, so keep real addresses and usernames out of the repo):
+`setup.sh --all` already joins the PC (step `headscale`). To join one by hand, run `sudo bash tools/join-headscale.sh --hostname <name>`; it asks for a pre-auth key. Then give each one an alias in `~/.ssh/config` **on your laptop** (this file is personal, so keep real addresses and usernames out of the repo):
 
 ```
 Host pc1
