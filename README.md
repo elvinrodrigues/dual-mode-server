@@ -6,6 +6,38 @@ Tuned for small-memory machines (tested on 4 GB RAM with a 5900 RPM HDD) and siz
 
 > **Status:** tested on **Debian 13 (Trixie)** only, on one machine. Other distros are not supported yet. The scripts change SSH, firewall, boot and kernel settings: **read them first and try them in a VM**.
 
+## Fresh Debian install (new PC)
+
+A fresh Debian has no `sudo` for your user and no `git`. Open this page in Firefox on the new PC and paste these, replacing `YOURUSERNAME` with the account you created during the install:
+
+```bash
+su -
+```
+
+```bash
+apt update && apt install -y sudo git
+```
+
+```bash
+usermod -aG sudo YOURUSERNAME
+```
+
+```bash
+exit
+```
+
+Log out and back in (the group only applies to a new login), then check that `sudo` works and clone the repo:
+
+```bash
+sudo -v
+git clone https://github.com/elvinrodrigues/dual-mode-server.git
+cd dual-mode-server
+```
+
+If you left the root password empty during the install, the installer already set up `sudo` for you; run just `sudo apt update && sudo apt install -y git`.
+
+Then run everything in order with one command (see [Whole setup in one go](#whole-setup-in-one-go)), or run each script yourself.
+
 ## Quick start
 
 Run it at the machine itself the first time, not over SSH.
@@ -27,6 +59,28 @@ ssh-copy-id user@<server-ip>
 ```
 
 Then run (or re-run) the script. The key stays protected by its passphrase, so don't create it on a shared PC without one.
+
+## Whole setup in one go
+
+`setup.sh` runs the repo's scripts in order on a fresh PC:
+
+| Step | What it runs |
+| :--- | :--- |
+| `optimize` | `optimize.sh --all` (SSH, firewall, memory, disk, boot menu, ...) |
+| `internet` | the `campus-login` module; it opens the accounts file for you to fill in |
+| `tools` | `tools/install-devtools.sh` (docker, node, pnpm, bun, curl, wget, zip, unzip, 7zip), then `optimize.sh --only docker` to harden the new Docker |
+| `headscale` | `tools/install-tailscale.sh`, then `tools/join-headscale.sh` (asks for the pre-auth key) |
+
+```bash
+sudo bash setup.sh --all --hostname flcpc1
+sudo bash setup.sh --all --skip internet --hostname flcpc1
+sudo bash setup.sh --only tools,headscale --hostname flcpc1
+sudo bash setup.sh --all --dry-run     # show the commands, change nothing
+```
+
+`--all` runs every step; `--only a,b` and `--skip a,b` pick steps; `--key-file FILE` and `--optimize-args "..."` are passed on. If a step fails, the script stops and tells you how to continue. Reboot at the end.
+
+Each piece also runs on its own: `tools/install-devtools.sh [--only a,b | --skip a,b]`, `tools/install-tailscale.sh [--deb FILE]`, `tools/join-headscale.sh`. The dev tools come from Debian's apt mirrors and the npm registry (node is Debian's own version, so it may be older than the latest release).
 
 ## Usage
 
@@ -133,11 +187,13 @@ More detail is in [`docs/ANALYSIS.md`](docs/ANALYSIS.md).
 ## Layout
 
 ```
-optimize.sh        entry point
+setup.sh           one command for a fresh PC (--all runs every step in order)
+optimize.sh        the optimize entry point
 lib/common.sh      helpers and machine detection
 modules/           one file per module (campus-login is optional)
 distros/debian.sh  package names, ZRAM, boot loader for Debian
-tools/             check-server.sh (read-only health check), join-headscale.sh,
+tools/             check-server.sh (read-only health check), install-devtools.sh,
+                   install-tailscale.sh, join-headscale.sh,
                    check-pcs.sh (laptop-side: which PCs are reachable)
 docs/              analysis and notes
 ```
