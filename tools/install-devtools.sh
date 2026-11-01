@@ -97,12 +97,18 @@ fi
 
 if want docker; then
   echo "[+] Docker"
-  apt-get install -y docker.io
-  compose="$(first_available docker-compose-v2 docker-compose-plugin docker-compose || true)"
-  if [ -n "$compose" ]; then
-    apt-get install -y "$compose"
+  # Never replace an existing Docker: docker.io conflicts with Docker's own
+  # docker-ce packages, and installing it would remove them.
+  if command -v docker >/dev/null 2>&1 || dpkg -s docker-ce >/dev/null 2>&1; then
+    log "Docker is already installed; leaving it as it is."
   else
-    warn "No docker compose package found in apt; skipping it."
+    apt-get install -y docker.io
+    compose="$(first_available docker-compose-v2 docker-compose-plugin docker-compose || true)"
+    if [ -n "$compose" ]; then
+      apt-get install -y "$compose"
+    else
+      warn "No docker compose package found in apt; skipping it."
+    fi
   fi
   systemctl enable --now docker
   if [ -n "$TARGET_USER" ]; then
@@ -115,7 +121,14 @@ fi
 
 if want node; then
   echo "[+] Node.js and npm"
-  apt-get install -y nodejs npm
+  # Never replace an existing Node: NodeSource's nodejs bundles npm and
+  # conflicts with Debian's separate npm package.
+  if command -v node >/dev/null 2>&1; then
+    log "Node is already installed ($(node --version)); leaving it as it is."
+    command -v npm >/dev/null 2>&1 || warn "npm is missing; pnpm and bun will be skipped."
+  else
+    apt-get install -y nodejs npm
+  fi
 fi
 
 # pnpm and bun are npm packages, so they only work once npm exists.

@@ -120,7 +120,7 @@ Running it again is safe. If a step fails, the script stops and prints how to co
 
 | Script | What it does | Options |
 | :--- | :--- | :--- |
-| `tools/install-devtools.sh` | Installs curl, wget, zip, unzip, 7zip, Docker (with compose), Node and npm from Debian's apt mirrors, then pnpm and bun with `npm install -g`. Node is Debian's own version, so it may be older than the latest release. | `--only a,b`, `--skip a,b` (items: `base`, `docker`, `node`, `pnpm`, `bun`) |
+| `tools/install-devtools.sh` | Installs curl, wget, zip, unzip, 7zip, Docker (with compose), Node and npm from Debian's apt mirrors, then pnpm and bun with `npm install -g`. An existing Docker or Node is left alone (Debian's `docker.io` would replace Docker's own `docker-ce`). A fresh Node is Debian's own version, so it may be older than the latest release. | `--only a,b`, `--skip a,b` (items: `base`, `docker`, `node`, `pnpm`, `bun`) |
 | `tools/install-tailscale.sh` | Installs the Tailscale client from its apt repository. Does nothing if it is already installed. | `--deb FILE` |
 | `tools/join-headscale.sh` | Joins this PC to the Headscale network, checks the server is reachable first, adds a firewall rule for `tailscale0`. The key is read from `--key-file`, `$HEADSCALE_AUTHKEY`, or a hidden prompt, and is never written to the repo. | `--hostname`, `--key-file`, `--server`, `--force` |
 

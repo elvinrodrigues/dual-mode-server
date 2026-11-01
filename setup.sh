@@ -146,12 +146,14 @@ echo " setup.sh: ${RUN[*]}"
 [ "$DRY_RUN" -eq 0 ] || echo " DRY RUN: nothing will be changed"
 echo "=========================================================="
 
-for s in "${RUN[@]}"; do
+for i in "${!RUN[@]}"; do
+  s="${RUN[$i]}"
   echo
   echo "== Step: $s =="
   if ! "step_$s"; then
+    rest="$(IFS=,; echo "${RUN[*]:$i}")"
     echo >&2
-    die "Step '$s' failed. Fix the problem, then continue with:  sudo bash setup.sh --only ${RUN[*]// /,} (drop the steps already done)"
+    die "Step '$s' failed. Fix the problem, then continue with:  sudo bash setup.sh --only $rest --hostname $NODE_NAME"
   fi
 done
 
