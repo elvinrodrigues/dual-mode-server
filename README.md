@@ -90,6 +90,30 @@ The portal address and accounts live in `/etc/campus-login.conf` (root-only, mod
 
 Every file that gets replaced is first copied to `<file>.bak.<timestamp>` (skipped if it already matches the latest backup). The script is safe to run more than once.
 
+## Several PCs over Headscale
+
+Join each PC to your Headscale network with `sudo bash tools/join-headscale.sh --hostname <name>`. Then give each one an alias in `~/.ssh/config` **on your laptop** (this file is personal, so keep real addresses and usernames out of the repo):
+
+```
+Host pc1
+  HostName <headscale-ip-of-pc1>
+Host pc2
+  HostName <headscale-ip-of-pc2>
+Host pc1 pc2
+  User <your-user>
+  IdentityFile ~/.ssh/id_ed25519
+  ConnectTimeout 10
+```
+
+Find each IP with `tailscale status`. Install your key once per PC (it asks for that PC's password), then connect by alias:
+
+```bash
+ssh-copy-id pc1
+ssh pc1
+```
+
+To see which PCs are online and have key login working, run `bash tools/check-pcs.sh` on the laptop (or `bash tools/check-pcs.sh pc1 pc2` for specific aliases). It changes nothing.
+
 ## Why these choices
 
 - **Docker bypasses UFW.** Its iptables rules run first, so a published port is reachable from the whole network. Binding to `127.0.0.1` by default closes that.
@@ -113,7 +137,8 @@ optimize.sh        entry point
 lib/common.sh      helpers and machine detection
 modules/           one file per module (campus-login is optional)
 distros/debian.sh  package names, ZRAM, boot loader for Debian
-tools/             check-server.sh (read-only health check)
+tools/             check-server.sh (read-only health check), join-headscale.sh,
+                   check-pcs.sh (laptop-side: which PCs are reachable)
 docs/              analysis and notes
 ```
 
