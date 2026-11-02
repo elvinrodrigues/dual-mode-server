@@ -85,6 +85,27 @@ tailscale status
 
 `tailscale status` should list this PC and the other club PCs. In the Headscale container, `headscale nodes list` should show it too. Then expire the pre-auth key you used (`headscale preauthkeys --help` lists the command).
 
+## Install as a package (APT)
+
+Instead of cloning, add the signed APT repository and install the `.deb`:
+
+```bash
+curl -fsSL https://elvinrodrigues.github.io/dual-mode-server/install.sh | sudo bash
+sudo apt install dual-mode-server
+```
+
+Then run `sudo dual-mode-server --all --hostname flcpc1` (same options as `setup.sh`) or `sudo dual-mode-optimize --debian --all`. Installing the package changes nothing by itself. Update later with `sudo apt update && sudo apt upgrade`.
+
+### Publishing a release (maintainer)
+
+One-time setup:
+
+1. Create a signing key with no passphrase: `gpg --quick-gen-key "dual-mode-server <you@example.com>" rsa4096 sign never`.
+2. Add its private key as the repository secret `GPG_PRIVATE_KEY`: `gpg --armor --export-secret-keys <KEYID>`. Never commit it.
+3. In GitHub, set Settings → Pages → Source to "GitHub Actions".
+
+Per release: `git tag v0.1.0 && git push origin v0.1.0`. The workflow in `.github/workflows/release.yml` builds the `.deb`, attaches it to a GitHub release and republishes the repository. To build locally, run `packaging/build-deb.sh [VERSION]` (needs `dpkg-deb`) and `packaging/build-apt-repo.sh` (needs `apt-utils` and a GPG key).
+
 ## What `setup.sh` does
 
 `setup.sh` runs the repo's scripts in order. Each step also works on its own.
@@ -187,7 +208,7 @@ sudo bash optimize.sh --list
 | `docker` | Published ports bind to `127.0.0.1` by default; log size capped. |
 | `memory` | ZRAM, sysctl (sized from RAM), `earlyoom`. |
 | `disk` | `noatime`, `bfq`, journal cap, SMART, auto-updates, CPU governor, no sleep. |
-| `grub` | Extra "Headless Server Mode" boot entry. |
+| `grub` | "Headless Server Mode" boot entry, first and default; menu shows for 10 s. |
 | `gui-toggle` | `gui-stop` / `gui-start` commands. |
 | `firewall` | UFW: management ports only from trusted networks (web/dev ports opt-in). |
 

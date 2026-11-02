@@ -11,3 +11,7 @@ id_*
 authorized_keys
 known_hosts
 tailscale*.key
+
+# Built packages
+/dist/
+/site/
