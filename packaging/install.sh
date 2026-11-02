@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Adds the dual-mode-server APT repository on Debian/Ubuntu.
-# Usage:  curl -fsSL https://elvinrodrigues.github.io/dual-mode-server/install.sh | sudo bash
+# Usage:  curl -fsSL https://apt.elvinrodrigues.dev/install.sh | sudo bash
 # Then:   sudo apt install dual-mode-server
 
 set -euo pipefail
 
-BASE_URL="${DMS_REPO_URL:-https://elvinrodrigues.github.io/dual-mode-server}"
+BASE_URL="${DMS_REPO_URL:-https://apt.elvinrodrigues.dev}"
 KEYRING=/etc/apt/keyrings/dual-mode-server.gpg
 LIST=/etc/apt/sources.list.d/dual-mode-server.list
 

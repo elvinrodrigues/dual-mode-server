@@ -90,7 +90,7 @@ tailscale status
 Instead of cloning, add the signed APT repository and install the `.deb`:
 
 ```bash
-curl -fsSL https://elvinrodrigues.github.io/dual-mode-server/install.sh | sudo bash
+curl -fsSL https://apt.elvinrodrigues.dev/install.sh | sudo bash
 sudo apt install dual-mode-server
 ```
 
